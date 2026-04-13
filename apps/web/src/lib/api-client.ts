@@ -22,8 +22,24 @@ import type {
   SearchResponse
 } from "@prozessschmiede/types";
 
+function resolveApiBaseUrl(): string {
+  const configuredBaseUrl = webAppConfig.apiBaseUrl;
+
+  // Browser can use relative API paths (proxy on same host).
+  if (typeof window !== "undefined") {
+    return configuredBaseUrl;
+  }
+
+  // Server-side rendering needs an absolute URL.
+  if (configuredBaseUrl.startsWith("http://") || configuredBaseUrl.startsWith("https://")) {
+    return configuredBaseUrl;
+  }
+
+  return process.env.INTERNAL_API_BASE_URL ?? "http://127.0.0.1:4200/api/v1";
+}
+
 async function fetchJson<T>(pathname: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${webAppConfig.apiBaseUrl}${pathname}`, {
+  const response = await fetch(`${resolveApiBaseUrl()}${pathname}`, {
     cache: "no-store",
     ...init,
     headers: {
