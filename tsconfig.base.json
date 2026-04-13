@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@prozessschmiede/types": [
+        "packages/types/src"
+      ],
+      "@prozessschmiede/types/*": [
+        "packages/types/src/*"
+      ],
+      "@prozessschmiede/config": [
+        "packages/config/src"
+      ],
+      "@prozessschmiede/config/*": [
+        "packages/config/src/*"
+      ],
+      "@prozessschmiede/ui": [
+        "packages/ui/src"
+      ],
+      "@prozessschmiede/ui/*": [
+        "packages/ui/src/*"
+      ],
+      "@prozessschmiede/bpmn": [
+        "packages/bpmn/src"
+      ],
+      "@prozessschmiede/bpmn/*": [
+        "packages/bpmn/src/*"
+      ]
+    }
+  }
+}
+

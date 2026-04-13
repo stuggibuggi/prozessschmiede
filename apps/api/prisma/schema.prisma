@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProcessStatus {
+  draft
+  active
+  inactive
+  archived
+}
+
+enum ModelVersionStatus {
+  draft
+  in_review
+  approved
+  published
+  rejected
+  archived
+}
+
+enum ApprovalStatus {
+  pending
+  in_review
+  returned
+  approved
+  rejected
+  cancelled
+}
+
+enum LockStatus {
+  active
+  released
+  expired
+  overridden
+}
+
+model User {
+  id               String               @id @default(uuid())
+  employeeId       String?              @unique
+  externalSubject  String?              @unique
+  email            String               @unique
+  displayName      String
+  locale           String               @default("de-DE")
+  primaryOrganizationId String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  roleAssignments  UserRoleAssignment[]
+  processRoles     ProcessRoleAssignment[]
+  checkoutLocks    CheckoutLock[]
+  modelVersions    ModelVersion[]       @relation("model_version_updated_by")
+  comments         Comment[]
+  approvalRequests ApprovalRequest[]    @relation("approval_requested_by")
+  approvalDecisions ApprovalDecision[]
+  reviewerRoutingRules ApprovalRoutingRule[] @relation("routing_rule_reviewer")
+  approverRoutingRules ApprovalRoutingRule[] @relation("routing_rule_approver")
+  auditEvents      AuditEvent[]
+  primaryOrganization Organization?     @relation("user_primary_organization", fields: [primaryOrganizationId], references: [id])
+  organizationAssignments UserOrganizationAssignment[]
+  ledOrganizations Organization[]       @relation("organization_leader")
+  applicationRoleAssignments ApplicationRoleAssignment[]
+}
+
+model Group {
+  id              String                @id @default(uuid())
+  code            String                @unique
+  displayName     String
+  roleAssignments GroupRoleAssignment[]
+}
+
+model Role {
+  id               String                @id @default(uuid())
+  code             String                @unique
+  name             String
+  permissions      PermissionOnRole[]
+  userAssignments  UserRoleAssignment[]
+  groupAssignments GroupRoleAssignment[]
+}
+
+model Permission {
+  id      String             @id @default(uuid())
+  code    String             @unique
+  name    String
+  roles   PermissionOnRole[]
+}
+
+model PermissionOnRole {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+}
+
+model GroupRoleAssignment {
+  id        String   @id @default(uuid())
+  groupId   String
+  roleId    String
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+}
+
+model Organization {
+  id                String        @id @default(uuid())
+  code              String        @unique
+  shortName         String?
+  name              String
+  type              String?
+  parentOrganizationId String?
+  leaderUserId      String?
+  laneMappings      LaneMapping[]
+  processes         Process[]
+  parentOrganization Organization? @relation("organization_hierarchy", fields: [parentOrganizationId], references: [id])
+  childOrganizations Organization[] @relation("organization_hierarchy")
+  users             User[]        @relation("user_primary_organization")
+  assignments       UserOrganizationAssignment[]
+  approvalRoutingRules ApprovalRoutingRule[]
+  ledBy             User?         @relation("organization_leader", fields: [leaderUserId], references: [id])
+}
+
+model Application {
+  id           String        @id @default(uuid())
+  code         String        @unique
+  name         String
+  description  String?
+  status       String?
+  ownerName    String?
+  ownerEmployeeId String?
+  laneMappings LaneMapping[]
+  processAssignments ProcessApplicationAssignment[]
+  roles        ApplicationRoleAssignment[]
+}
+
+model ProcessCategory {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  name      String
+  processes Process[]
+}
+
+model ProcessGroup {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  name      String
+  processes Process[]
+}
+
+model Process {
+  id                    String                  @id @default(uuid())
+  businessId            String                  @unique
+  name                  String
+  description           String
+  status                ProcessStatus
+  lifecycleStatus       String?
+  sourceLink            String?
+  categoryId            String
+  groupId               String
+  owningOrganizationId  String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  category              ProcessCategory         @relation(fields: [categoryId], references: [id])
+  group                 ProcessGroup            @relation(fields: [groupId], references: [id])
+  owningOrganization    Organization?           @relation(fields: [owningOrganizationId], references: [id])
+  subprocesses          Subprocess[]
+  roleAssignments       ProcessRoleAssignment[]
+  models                BpmnModel[]
+  approvalRoutingRules  ApprovalRoutingRule[]
+  functionAssignments   ProcessFunctionAssignment[]
+  applicationAssignments ProcessApplicationAssignment[]
+}
+
+model Subprocess {
+  id          String       @id @default(uuid())
+  businessId  String       @unique
+  processId   String
+  name        String
+  description String
+  status      ProcessStatus
+  sourceLink  String?
+  sortOrder   Int          @default(0)
+  process     Process      @relation(fields: [processId], references: [id])
+  models      BpmnModel[]
+}
+
+model ProcessRoleAssignment {
+  id          String   @id @default(uuid())
+  processId   String
+  userId      String
+  roleCode    String
+  createdAt   DateTime @default(now())
+  process     Process  @relation(fields: [processId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model UserOrganizationAssignment {
+  id            String       @id @default(uuid())
+  userId        String
+  organizationId String
+  functionId    String?
+  functionName  String?
+  functionLevel String?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id])
+  organization  Organization @relation(fields: [organizationId], references: [id])
+}
+
+model BusinessFunction {
+  id            String                     @id @default(uuid())
+  code          String                     @unique
+  name          String
+  category      String?
+  isEssential   Boolean                    @default(false)
+  processAssignments ProcessFunctionAssignment[]
+}
+
+model ProcessFunctionAssignment {
+  id                 String           @id @default(uuid())
+  processId          String
+  businessFunctionId String
+  functionNameSnapshot String
+  isCriticalFunction Boolean?
+  isEssentialFunction Boolean?
+  process            Process          @relation(fields: [processId], references: [id])
+  businessFunction   BusinessFunction @relation(fields: [businessFunctionId], references: [id])
+
+  @@unique([processId, businessFunctionId])
+}
+
+model ProcessApplicationAssignment {
+  id            String      @id @default(uuid())
+  processId     String
+  applicationId String?
+  euId          String?
+  euName        String?
+  assignmentType String
+  process       Process     @relation(fields: [processId], references: [id])
+  application   Application? @relation(fields: [applicationId], references: [id])
+
+  @@index([processId, assignmentType])
+}
+
+model ApplicationRoleAssignment {
+  id             String      @id @default(uuid())
+  applicationId  String
+  roleName       String
+  technicalRoleName String?
+  holderName     String?
+  userId         String?
+  organizationCode String?
+  employeeId     String?
+  email          String?
+  roleType       String?
+  application    Application @relation(fields: [applicationId], references: [id])
+  user           User?       @relation(fields: [userId], references: [id])
+}
+
+model BpmnModel {
+  id                 String         @id @default(uuid())
+  processId          String?
+  subprocessId       String?
+  name               String
+  modelType          String         @default("bpmn")
+  publishedVersionId String?        @unique
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  process            Process?       @relation(fields: [processId], references: [id])
+  subprocess         Subprocess?    @relation(fields: [subprocessId], references: [id])
+  versions           ModelVersion[]
+  checkoutLocks      CheckoutLock[]
+}
+
+model ModelVersion {
+  id               String              @id @default(uuid())
+  modelId          String
+  baseVersionId    String?
+  versionMajor     Int                 @default(1)
+  versionMinor     Int                 @default(0)
+  versionPatch     Int                 @default(0)
+  versionLabel     String
+  status           ModelVersionStatus
+  changeNote       String
+  checksum         String?
+  updatedById      String
+  publishedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  model            BpmnModel           @relation(fields: [modelId], references: [id])
+  baseVersion      ModelVersion?       @relation("base_version", fields: [baseVersionId], references: [id])
+  derivedVersions  ModelVersion[]      @relation("base_version")
+  updatedBy        User                @relation("model_version_updated_by", fields: [updatedById], references: [id])
+  diagramAssets    DiagramAsset[]
+  laneMappings     LaneMapping[]
+  comments         Comment[]
+  attachments      Attachment[]
+  approvalRequests ApprovalRequest[]
+
+  @@index([modelId, status])
+}
+
+model DiagramAsset {
+  id             String       @id @default(uuid())
+  modelVersionId String
+  assetType      String
+  storageKey     String
+  checksum       String?
+  createdAt      DateTime     @default(now())
+  modelVersion   ModelVersion @relation(fields: [modelVersionId], references: [id])
+}
+
+model LaneMapping {
+  id               String        @id @default(uuid())
+  modelVersionId   String
+  bpmnElementId    String
+  laneNameSnapshot String
+  organizationId   String?
+  roleCode         String?
+  applicationId    String?
+  mappingSource    String
+  validFrom        DateTime      @default(now())
+  validTo          DateTime?
+  modelVersion     ModelVersion  @relation(fields: [modelVersionId], references: [id])
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  application      Application?  @relation(fields: [applicationId], references: [id])
+
+  @@index([modelVersionId, bpmnElementId])
+}
+
+model CheckoutLock {
+  id             String     @id @default(uuid())
+  modelId        String
+  lockedByUserId String
+  status         LockStatus
+  reason         String?
+  acquiredAt     DateTime   @default(now())
+  expiresAt      DateTime?
+  releasedAt     DateTime?
+  model          BpmnModel  @relation(fields: [modelId], references: [id])
+  lockedByUser   User       @relation(fields: [lockedByUserId], references: [id])
+
+  @@index([modelId, status])
+}
+
+model Comment {
+  id             String       @id @default(uuid())
+  modelVersionId String
+  authorId       String
+  bpmnElementId  String?
+  content        String
+  createdAt      DateTime     @default(now())
+  modelVersion   ModelVersion @relation(fields: [modelVersionId], references: [id])
+  author         User         @relation(fields: [authorId], references: [id])
+}
+
+model Attachment {
+  id             String       @id @default(uuid())
+  modelVersionId String
+  fileName       String
+  mimeType       String
+  storageKey     String
+  uploadedById   String?
+  createdAt      DateTime     @default(now())
+  modelVersion   ModelVersion @relation(fields: [modelVersionId], references: [id])
+}
+
+model ApprovalRequest {
+  id             String           @id @default(uuid())
+  modelVersionId String
+  requestedById  String
+  status         ApprovalStatus
+  requestedAt    DateTime         @default(now())
+  completedAt    DateTime?
+  modelVersion   ModelVersion     @relation(fields: [modelVersionId], references: [id])
+  requestedBy    User             @relation("approval_requested_by", fields: [requestedById], references: [id])
+  approvalSteps  ApprovalStep[]
+}
+
+model ApprovalStep {
+  id                String            @id @default(uuid())
+  approvalRequestId String
+  sequence          Int
+  stepType          String
+  status            ApprovalStatus
+  reviewerRoleCode  String?
+  approverRoleCode  String?
+  dueAt             DateTime?
+  approvalRequest   ApprovalRequest   @relation(fields: [approvalRequestId], references: [id])
+  decisions         ApprovalDecision[]
+}
+
+model ApprovalDecision {
+  id             String         @id @default(uuid())
+  approvalStepId String
+  actorUserId    String
+  decision       ApprovalStatus
+  comment        String?
+  decidedAt      DateTime       @default(now())
+  approvalStep   ApprovalStep   @relation(fields: [approvalStepId], references: [id])
+  actorUser      User           @relation(fields: [actorUserId], references: [id])
+}
+
+model ApprovalRoutingRule {
+  id             String   @id @default(uuid())
+  name           String
+  isActive       Boolean  @default(true)
+  priority       Int      @default(100)
+  processId      String?
+  organizationId String?
+  roleCode       String?
+  reviewerUserId String
+  approverUserId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  process        Process? @relation(fields: [processId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  reviewerUser   User     @relation("routing_rule_reviewer", fields: [reviewerUserId], references: [id])
+  approverUser   User     @relation("routing_rule_approver", fields: [approverUserId], references: [id])
+
+  @@index([isActive, priority])
+  @@index([processId, isActive])
+  @@index([organizationId, isActive])
+}
+
+model AuditEvent {
+  id               String             @id @default(uuid())
+  occurredAt       DateTime           @default(now())
+  actorUserId      String?
+  actorDisplayName String
+  eventType        String
+  aggregateType    String
+  aggregateId      String
+  correlationId    String?
+  requestId        String?
+  ipAddress        String?
+  userAgent        String?
+  summary          String
+  actorUser        User?              @relation(fields: [actorUserId], references: [id])
+  payload          AuditEventPayload?
+}
+
+model AuditEventPayload {
+  id           String    @id @default(uuid())
+  auditEventId String    @unique
+  beforeJson   Json?
+  afterJson    Json?
+  diffJson     Json?
+  auditEvent   AuditEvent @relation(fields: [auditEventId], references: [id])
+}

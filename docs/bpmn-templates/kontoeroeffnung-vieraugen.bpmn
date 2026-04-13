@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_AccountOpening"
+  targetNamespace="https://prozessschmiede.local/bpmn">
+  <bpmn:collaboration id="Collaboration_AccountOpening">
+    <bpmn:participant id="Participant_BankIntern" name="Bank intern" processRef="Process_AccountOpening"/>
+    <bpmn:participant id="Participant_Kunde" name="Kunde"/>
+    <bpmn:messageFlow id="MessageFlow_UnterlagenAnfrage" name="Unterlagen anfordern" sourceRef="Task_DatenAufnehmen" targetRef="Participant_Kunde"/>
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_AccountOpening" name="Kontoeroeffnung Privatkunde" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_Vertrieb" name="Vertrieb">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DatenAufnehmen</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_UnterlagenVollstaendig</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Marktfolge" name="Marktfolge">
+        <bpmn:flowNodeRef>Task_UnterlagenPruefen</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Compliance" name="Compliance">
+        <bpmn:flowNodeRef>Task_KYCPruefung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_RisikoEinstufung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_VierAugenFreigabe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AblehnungMitteilung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Freigegeben</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Abgelehnt</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_1" name="Antrag eingegangen">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_DatenAufnehmen" name="Antragsdaten aufnehmen">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gateway_UnterlagenVollstaendig" name="Unterlagen vollstaendig?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:incoming>Flow_3b</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_3a</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_UnterlagenPruefen" name="Unterlagen pruefen">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_KYCPruefung" name="KYC/AML Pruefung durchfuehren">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gateway_RisikoEinstufung" name="Risiko akzeptabel?">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_VierAugenFreigabe" name="Vier-Augen-Freigabe">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_AblehnungMitteilung" name="Ablehnung kommunizieren">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="EndEvent_Freigegeben" name="Konto eroeffnet">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="EndEvent_Abgelehnt" name="Antrag abgelehnt">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_DatenAufnehmen"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_DatenAufnehmen" targetRef="Gateway_UnterlagenVollstaendig"/>
+    <bpmn:sequenceFlow id="Flow_3" name="Ja" sourceRef="Gateway_UnterlagenVollstaendig" targetRef="Task_UnterlagenPruefen"/>
+    <bpmn:sequenceFlow id="Flow_3a" name="Nein" sourceRef="Gateway_UnterlagenVollstaendig" targetRef="Task_DatenAufnehmen"/>
+    <bpmn:sequenceFlow id="Flow_3b" sourceRef="Task_DatenAufnehmen" targetRef="Gateway_UnterlagenVollstaendig"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_UnterlagenPruefen" targetRef="Task_KYCPruefung"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_KYCPruefung" targetRef="Gateway_RisikoEinstufung"/>
+    <bpmn:sequenceFlow id="Flow_6" name="Ja" sourceRef="Gateway_RisikoEinstufung" targetRef="Task_VierAugenFreigabe"/>
+    <bpmn:sequenceFlow id="Flow_7" name="Nein" sourceRef="Gateway_RisikoEinstufung" targetRef="Task_AblehnungMitteilung"/>
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_VierAugenFreigabe" targetRef="EndEvent_Freigegeben"/>
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_AblehnungMitteilung" targetRef="EndEvent_Abgelehnt"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_AccountOpening">
+      <bpmndi:BPMNShape id="Participant_BankIntern_di" bpmnElement="Participant_BankIntern" isHorizontal="true">
+        <dc:Bounds x="120" y="100" width="1700" height="520"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Vertrieb_di" bpmnElement="Lane_Vertrieb" isHorizontal="true">
+        <dc:Bounds x="150" y="100" width="1670" height="170"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Marktfolge_di" bpmnElement="Lane_Marktfolge" isHorizontal="true">
+        <dc:Bounds x="150" y="270" width="1670" height="150"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Compliance_di" bpmnElement="Lane_Compliance" isHorizontal="true">
+        <dc:Bounds x="150" y="420" width="1670" height="200"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Participant_Kunde_di" bpmnElement="Participant_Kunde" isHorizontal="true">
+        <dc:Bounds x="120" y="650" width="1700" height="120"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="230" y="165" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DatenAufnehmen_di" bpmnElement="Task_DatenAufnehmen">
+        <dc:Bounds x="330" y="143" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_UnterlagenVollstaendig_di" bpmnElement="Gateway_UnterlagenVollstaendig" isMarkerVisible="true">
+        <dc:Bounds x="560" y="158" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UnterlagenPruefen_di" bpmnElement="Task_UnterlagenPruefen">
+        <dc:Bounds x="700" y="305" width="170" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_KYCPruefung_di" bpmnElement="Task_KYCPruefung">
+        <dc:Bounds x="960" y="470" width="190" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_RisikoEinstufung_di" bpmnElement="Gateway_RisikoEinstufung" isMarkerVisible="true">
+        <dc:Bounds x="1240" y="485" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_VierAugenFreigabe_di" bpmnElement="Task_VierAugenFreigabe">
+        <dc:Bounds x="1380" y="445" width="180" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AblehnungMitteilung_di" bpmnElement="Task_AblehnungMitteilung">
+        <dc:Bounds x="1380" y="555" width="180" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Freigegeben_di" bpmnElement="EndEvent_Freigegeben">
+        <dc:Bounds x="1650" y="467" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Abgelehnt_di" bpmnElement="EndEvent_Abgelehnt">
+        <dc:Bounds x="1650" y="577" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="266" y="183"/>
+        <di:waypoint x="330" y="183"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="480" y="183"/>
+        <di:waypoint x="560" y="183"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="585" y="208"/>
+        <di:waypoint x="585" y="345"/>
+        <di:waypoint x="700" y="345"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3a_di" bpmnElement="Flow_3a">
+        <di:waypoint x="560" y="183"/>
+        <di:waypoint x="405" y="183"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3b_di" bpmnElement="Flow_3b">
+        <di:waypoint x="405" y="183"/>
+        <di:waypoint x="560" y="183"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="870" y="345"/>
+        <di:waypoint x="1055" y="345"/>
+        <di:waypoint x="1055" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1150" y="510"/>
+        <di:waypoint x="1240" y="510"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1290" y="510"/>
+        <di:waypoint x="1380" y="485"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1290" y="510"/>
+        <di:waypoint x="1380" y="595"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1560" y="485"/>
+        <di:waypoint x="1650" y="485"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1560" y="595"/>
+        <di:waypoint x="1650" y="595"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_UnterlagenAnfrage_di" bpmnElement="MessageFlow_UnterlagenAnfrage">
+        <di:waypoint x="405" y="223"/>
+        <di:waypoint x="405" y="650"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
