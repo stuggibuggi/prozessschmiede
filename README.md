@@ -31,6 +31,37 @@ corepack pnpm db:seed
 corepack pnpm dev
 ```
 
+## Produktion (Linux/Plesk)
+
+Empfohlene Schritte im Projektordner:
+
+```bash
+corepack pnpm install
+corepack pnpm --filter api prisma:generate
+corepack pnpm --filter api prisma:push
+corepack pnpm build
+```
+
+Wichtige ENV-Werte (z. B. in `.env` und `apps/web/.env.production`):
+
+```env
+PORT=4200
+NEXT_PUBLIC_API_BASE_URL=http://prozessschmiede.ikt-asset.de:4200/api/v1
+```
+
+Start (Beispiel):
+
+```bash
+corepack pnpm --filter api start:env
+corepack pnpm --filter web start -- -p 3400
+```
+
+Falls `next build` auf kleinen Servern mit `spawn ... EAGAIN` scheitert:
+
+```bash
+corepack pnpm --filter web exec next build --experimental-build-mode=compile --no-lint
+```
+
 Nach Schema-Erweiterungen (z. B. neue Governance-Routing-Regeln) bitte immer erneut ausfuehren:
 
 ```bash
